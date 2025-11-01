@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Historial de Orden</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .evento-timeout { background-color: #fee2e2; border-left: 4px solid #dc2626; }
+        .evento-critico { background-color: #fef3c7; border-left: 4px solid #d97706; }
+        .evento-normal { background-color: #f3f4f6; border-left: 4px solid #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4 text-gray-800">Historial de Orden</h1>
+
+    <div class="mb-4 flex space-x-2">
+        <input id="ordenId" type="text" placeholder="ID de la orden" class="border rounded p-2 flex-grow" />
+        <button id="btnCargar" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Cargar</button>
+    </div>
+
+    <div id="timeline" class="space-y-3">
+        <p class="text-gray-500">Ingresa un ID de orden y presiona "Cargar".</p>
+    </div>
+</div>
+
+<script>
+    const btn = document.getElementById('btnCargar');
+    const input = document.getElementById('ordenId');
+    const timeline = document.getElementById('timeline');
+
+    btn.addEventListener('click', async () => {
+        const id = input.value.trim();
+        if (!id) return alert('Ingresa un ID de orden');
+
+        timeline.innerHTML = '<p class="text-gray-500">Cargando...</p>';
+
+        try {
+            const res = await fetch(`http://localhost:8081/api/ordenes/${id}/historial`);
+            if (!res.ok) throw new Error('Error al obtener historial');
+            const data = await res.json();
+
+            if (data.length === 0) {
+                timeline.innerHTML = '<p class="text-gray-500">Sin historial para esta orden.</p>';
+                return;
+            }
+
+            timeline.innerHTML = '';
+            data.forEach(ev => {
+                const clase = ev.evento === 'TIMEOUT' ? 'evento-timeout'
+                    : ev.evento.includes('CRÍTICO') ? 'evento-critico'
+                        : 'evento-normal';
+                const fecha = new Date(ev.timestamp).toLocaleString('es-CO');
+
+                const div = document.createElement('div');
+                div.className = `${clase} p-3 rounded`;
+                div.innerHTML = `
+            <div class="flex justify-between">
+              <span class="font-semibold text-gray-800">${ev.evento}</span>
+              <span class="text-sm text-gray-500">${fecha}</span>
+            </div>
+            <p class="text-gray-700">${ev.detalle}</p>
+            <p class="text-sm text-gray-500">Actor: ${ev.actor}</p>
+            <p class="text-sm text-gray-600">Estado: ${ev.estadoGlobal}</p>
+          `;
+                timeline.appendChild(div);
+            });
+        } catch (e) {
+            timeline.innerHTML = `<p class="text-red-600">Error: ${e.message}</p>`;
+        }
+    });
+</script>
+</body>
+</html>

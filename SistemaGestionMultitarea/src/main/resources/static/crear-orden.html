@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gestión de Órdenes — Crear y Listar</title>
+    <style>
+        body { font-family: system-ui, Arial; margin: 20px; background:#f3f4f6; color:#111 }
+        .wrap { max-width:1100px; margin:0 auto; }
+        h1 { text-align:center }
+        .grid { display:grid; grid-template-columns: 1fr 420px; gap:20px; align-items:start; }
+        .card { background:white; border-radius:8px; padding:16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        label { display:block; margin-top:8px; font-weight:600; font-size:14px }
+        input[type="text"], textarea, select, input[type="number"] {
+            width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box;
+        }
+        button { margin-top:12px; padding:8px 12px; border:none; border-radius:6px; cursor:pointer }
+        .btn-primary { background:#2563eb; color:white }
+        .btn-danger { background:#ef4444; color:white }
+        table { width:100%; border-collapse:collapse; margin-top:12px }
+        th, td { text-align:left; padding:8px; border-bottom:1px solid #eef2f7 }
+        .small { font-size:13px; color:#555 }
+        .areas-list { margin-top:8px; font-size:13px; color:#333 }
+        .kpi { display:flex; gap:12px; margin-bottom:12px }
+        .kpi > div { background:#111827;color:#fff;padding:8px 12px;border-radius:8px; min-width:110px; text-align:center }
+        .muted { color:#6b7280 }
+        .inline { display:inline-block }
+        .controls { display:flex; gap:8px; align-items:center }
+        .note { font-size:13px; color:#6b7280; margin-top:8px }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Gestión de Órdenes — Crear y Listar</h1>
+
+    <div class="grid">
+        <!-- Formulario crear -->
+        <div class="card">
+            <h2>Crear nueva orden</h2>
+
+            <label for="titulo">Título</label>
+            <input id="titulo" type="text" placeholder="Ej: Actualización de servidores" />
+
+            <label for="descripcion">Descripción</label>
+            <textarea id="descripcion" rows="4" placeholder="Descripción breve..."></textarea>
+
+            <label for="creador">Creador</label>
+            <input id="creador" type="text" placeholder="usuario.creador" />
+
+            <label for="areas">Áreas (selección múltiple)</label>
+            <select id="areas" multiple size="5"></select>
+            <div class="note">Mantén Ctrl / Cmd para múltiples selecciones</div>
+
+            <label for="asignadaA">Responsable asignado (opcional)</label>
+            <input id="asignadaA" type="text" placeholder="maria.torres" />
+
+            <label for="slaSeg">SLA (segundos)</label>
+            <input id="slaSeg" type="number" value="3600" min="1" />
+
+            <div class="controls">
+                <button id="btnCrear" class="btn-primary">Crear y asignar</button>
+                <button id="btnMock" class="inline">Usar datos mock</button>
+            </div>
+
+            <p class="small muted">Al crear la orden se generarán filas en <code>orden_area</code> y entradas en <code>historial</code>.</p>
+        </div>
+
+        <!-- Lista + KPIs -->
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h2 style="margin:0">Órdenes</h2>
+                <div>
+                    <label class="small">Filtro estado</label>
+                    <select id="filtroEstado">
+                        <option value="">Todos</option>
+                        <option value="NUEVA">NUEVA</option>
+                        <option value="EN_PROGRESO">EN_PROGRESO</option>
+                        <option value="COMPLETADA">COMPLETADA</option>
+                        <option value="TIMEOUT">TIMEOUT</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="kpi">
+                <div><div class="small">Total</div><div id="k_total">0</div></div>
+                <div><div class="small">Completadas</div><div id="k_completadas">0</div></div>
+                <div><div class="small">Pendientes</div><div id="k_pendientes">0</div></div>
+            </div>
+
+            <table>
+                <thead><tr><th>Título</th><th>Estado</th><th>Creador</th><th>Últ. actualización</th><th></th></tr></thead>
+                <tbody id="ordenes-body"></tbody>
+            </table>
+
+            <hr />
+
+            <h3>Áreas de la orden seleccionada</h3>
+            <div id="areas-selected" class="areas-list muted">Selecciona una orden para ver sus áreas</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ajusta si sirves la UI desde otro origen (cambiar host/puerto)
+    const API_BASE = "http://localhost:8080/api/ordenes";
+
+    // --- Inicialización ---
+    document.addEventListener("DOMContentLoaded", () => {
+        cargarAreasCatalogo();
+        cargarOrdenes();
+        document.getElementById("btnCrear").addEventListener("click", crearOrden);
+        document.getElementById("filtroEstado").addEventListener("change", cargarOrdenes);
+        document.getElementById("btnMock").addEventListener("click", usarMockAreas);
+    });
+
+    // --- Helpers UI ---
+    function q(id){ return document.getElementById(id); }
+    function fmtDate(d){ try{ return new Date(d).toLocaleString() } catch(e){ return "-" } }
+
+    // --- Cargar catálogo de áreas (desde /api/areas si lo tienes) ---
+    async function cargarAreasCatalogo() {
+        const select = q("areas");
+        select.innerHTML = "";
+        try {
+            // Si no tienes endpoint /api/areas, comentá la fetch y crea mock con usarMockAreas()
+            const resp = await fetch("/api/areas");
+            if (!resp.ok) throw new Error("no areas");
+            const data = await resp.json();
+            data.forEach(a => {
+                const opt = document.createElement("option");
+                opt.value = a.id;
+                opt.textContent = a.nombre + (a.responsable? " — " + a.responsable : "");
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            // si falla, deja la opción para mock (usuario puede usar el botón mock)
+            select.innerHTML = "<option value='mock_area_1'>Área - Mock 1</option>";
+        }
+    }
+
+    function usarMockAreas(){
+        const select = q("areas");
+        select.innerHTML = "";
+        const mocks = [
+            {id:"area-A","nombre":"Producción"},
+            {id:"area-B","nombre":"Calidad"},
+            {id:"area-C","nombre":"Infra"},
+        ];
+        mocks.forEach(a=>{
+            const opt = document.createElement("option");
+            opt.value = a.id; opt.textContent = a.nombre;
+            select.appendChild(opt);
+        });
+    }
+
+    // --- Crear orden (POST /api/ordenes/crear) ---
+    async function crearOrden(){
+        const titulo = q("titulo").value.trim();
+        const descripcion = q("descripcion").value.trim();
+        const creador = q("creador").value.trim() || "anon";
+        const asignadaA = q("asignadaA").value.trim() || null;
+        const slaSeg = Number(q("slaSeg").value) || 3600;
+
+        const selected = Array.from(q("areas").selectedOptions).map(o=>o.value);
+        if(!titulo || selected.length===0){ alert("Título y al menos un área son requeridos"); return; }
+
+        const payload = {
+            titulo, descripcion, creador,
+            areas: selected,
+            asignadaA,
+            slaSeg
+        };
+
+        try {
+            const res = await fetch(API_BASE + "/crear", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error("Error creando orden: " + res.status + " " + text);
+            }
+            const orden = await res.json();
+            alert("Orden creada: " + (orden.titulo || orden.id));
+            limpiarFormulario();
+            cargarOrdenes();
+        } catch (err) {
+            console.error(err);
+            alert("Error al crear orden: " + err.message);
+        }
+    }
+
+    function limpiarFormulario(){
+        q("titulo").value=""; q("descripcion").value=""; q("creador").value="";
+        q("asignadaA").value=""; q("slaSeg").value=3600;
+        // deseleccionar areas
+        Array.from(q("areas").options).forEach(opt=>opt.selected=false);
+    }
+
+    // --- Cargar órdenes (GET /api/ordenes) ---
+    async function cargarOrdenes(){
+        const estado = q("filtroEstado").value;
+        let url = API_BASE;
+        if (estado) url += "?estado=" + encodeURIComponent(estado);
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("error fetching orders " + res.status);
+            const data = await res.json();
+            renderTablaOrdenes(data);
+            renderKPIs(data);
+        } catch(err){
+            console.error(err);
+            q("ordenes-body").innerHTML = "<tr><td colspan='5'>Error cargando órdenes</td></tr>";
+        }
+    }
+
+    function renderKPIs(ordenes){
+        q("k_total").innerText = ordenes.length;
+        q("k_completadas").innerText = ordenes.filter(o=>o.estadoGlobal==="COMPLETADA").length;
+        q("k_pendientes").innerText = ordenes.filter(o=>o.estadoGlobal!=="COMPLETADA" && o.estadoGlobal!=="TIMEOUT").length;
+    }
+
+    // --- Render tabla y acciones ---
+    function renderTablaOrdenes(ordenes){
+        const tbody = q("ordenes-body");
+        tbody.innerHTML = "";
+        if(ordenes.length===0){
+            tbody.innerHTML = "<tr><td colspan='5' class='muted'>No hay órdenes</td></tr>";
+            q("areas-selected").textContent = "Selecciona una orden para ver sus áreas";
+            return;
+        }
+
+        ordenes.forEach(o=>{
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+          <td><strong>${escapeHtml(o.titulo||"(sin título)")}</strong><div class="small muted">${o.descripcion||""}</div></td>
+          <td>${o.estadoGlobal||"-"}</td>
+          <td>${escapeHtml(o.creador||"-")}</td>
+          <td class="small muted">${fmtDate(o.actualizadaEn || o.creadaEn)}</td>
+          <td style="text-align:right">
+            <button data-id="${o.id}" class="btn-view small">Ver áreas</button>
+            <button data-id="${o.id}" class="btn-delete small" style="background:#ef4444;color:white;border:none;padding:6px 8px;border-radius:6px;margin-left:6px">Eliminar</button>
+          </td>
+        `;
+            tbody.appendChild(tr);
+        });
+
+        // attach handlers
+        tbody.querySelectorAll(".btn-view").forEach(b=>{
+            b.addEventListener("click", ()=> cargarAreasDeOrden(b.dataset.id));
+        });
+        tbody.querySelectorAll(".btn-delete").forEach(b=>{
+            b.addEventListener("click", ()=> eliminarOrdenConfirm(b.dataset.id));
+        });
+    }
+
+    // --- Ver áreas de una orden (GET /api/ordenes/{id}/areas) ---
+    async function cargarAreasDeOrden(ordenId){
+        q("areas-selected").textContent = "Cargando...";
+        try {
+            const res = await fetch(API_BASE + "/" + ordenId + "/areas");
+            if (!res.ok) throw new Error("no areas " + res.status);
+            const data = await res.json();
+            if (!Array.isArray(data) || data.length===0) {
+                q("areas-selected").textContent = "No hay áreas asignadas a esta orden.";
+                return;
+            }
+            // render areas
+            const ul = document.createElement("div");
+            ul.innerHTML = data.map(a=>`
+          <div style="padding:6px 0;border-bottom:1px dashed #eee">
+            <div><strong>Área:</strong> ${escapeHtml(a.areaId || a.area_id || "(id)")}</div>
+            <div class="small muted">Estado: ${a.estadoParcial || a.estado_parcial || a.estado || "?"} — seg_acumulados: ${a.segAcumulados ?? a.seg_acumulados ?? 0}</div>
+          </div>
+        `).join("");
+            q("areas-selected").innerHTML = "";
+            q("areas-selected").appendChild(ul);
+        } catch (e) {
+            console.error(e);
+            q("areas-selected").textContent = "Error cargando áreas.";
+        }
+    }
+
+    // --- Eliminar orden ---
+    async function eliminarOrdenConfirm(id){
+        if (!confirm("¿Eliminar orden? Esta acción borrará la orden (y sus relaciones).")) return;
+        try {
+            const res = await fetch(API_BASE + "/" + id, { method:"DELETE" });
+            if (!res.ok) throw new Error("delete failed " + res.status);
+            alert("Orden eliminada");
+            cargarOrdenes();
+        } catch(e){
+            console.error(e);
+            alert("Error eliminando orden: " + e.message);
+        }
+    }
+
+    // --- Util ---
+    function escapeHtml(s){ if(!s) return ""; return s.toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestión de Órdenes</title>
+    <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<header>
+    <h1>📋 Órdenes de Trabajo</h1>
+</header>
+
+<section id="kpis">
+    <div class="kpi"><h2 id="total">0</h2><p>Total</p></div>
+    <div class="kpi"><h2 id="completadas">0</h2><p>Completadas</p></div>
+    <div class="kpi"><h2 id="pendientes">0</h2><p>Pendientes</p></div>
+    <div class="kpi"><h2 id="sin-solucion">0</h2><p>Sin solución</p></div>
+</section>
+
+<section id="filtros">
+    <label for="estado">Filtrar por estado:</label>
+    <select id="estado">
+        <option value="">Todos</option>
+        <option value="NUEVA">Nueva</option>
+        <option value="ASIGNADA">Asignada</option>
+        <option value="EN_PROGRESO">En progreso</option>
+        <option value="COMPLETADA">Completada</option>
+        <option value="CERRADA_SIN_SOLUCION">Sin solución</option>
+    </select>
+</section>
+
+<section id="tabla-ordenes">
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Estado</th>
+            <th>Creador</th>
+            <th>Última actualización</th>
+        </tr>
+        </thead>
+        <tbody id="ordenes-body"></tbody>
+    </table>
+</section>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>

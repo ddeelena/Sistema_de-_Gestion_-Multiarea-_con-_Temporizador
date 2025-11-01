@@ -1,0 +1,32 @@
+1. Creacion y asigancion
+
+IMAGENES (carpeta capturas): CREAR ORDEN, NOTI GURADADO EXITOSO y VER TODAS LAS ORDENES
+
+DESCRPCION: Se evidencia que el sistema nos permite crear un orden,
+indicando quien la esta creando y a quien se le asigna.
+
+En la imagen CREAR ORDEN se crea y en VER TODAS LAS ORDENES se muestra ya creada
+
+2. TICK CAMBIANDO
+
+CAMBIO DE ESTADO.mp4, HISTORIAL y HISTORIAL 2
+
+DESCRIPCION: En este video se observa como con al pasar el tiempo indicado en el tick
+se cambia el estado automaticamente
+
+3. HISTORIAL Y KPIs
+
+HISTORIAL y HISTORIAL 2 / VER TODAS LAS ORDENES
+
+DESCRPCION: En ambas imagenes de puede detallar como ha cambiado de estado las ordenes consultadas
+Ademas, en VER TODAS LAS ORDENES, podemos observar que nos da un indicador muy importante cuantos
+en cada estado ahi. De esta informacion se puede obtener KPIs como porcentaje de cumplimento,
+desviacion del tiempo, usuario con mayor cantidad de ordenes.
+
+4. PRUEBAS
+
+PRUEBAS EXITOSAS
+
+DESCRIPCION: En esta imagen se evidencia que el sistema paso con exito las pruebas solicitadas
+
+
