@@ -1,0 +1,53 @@
+body {
+    font-family: system-ui, sans-serif;
+    background: #f9fafb;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 900px;
+    margin: 2rem auto;
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+    color: #222;
+}
+
+.estado {
+    font-weight: bold;
+    color: #0057b8;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+button {
+    margin: 0.2rem;
+    padding: 0.5rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button.iniciar { background: #22c55e; color: white; }
+button.pausar { background: #eab308; color: white; }
+button.completar { background: #3b82f6; color: white; }
+button.sin-solucion { background: #ef4444; color: white; }
